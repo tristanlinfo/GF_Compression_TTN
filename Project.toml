@@ -1,2 +1,7 @@
 [deps]
+GraphTikZ = "cef0280d-a2bf-4776-a511-cf6253a7debc"
 Plots = "91a5bcdd-55d7-5caf-9e0b-520d859cae80"
+SimpleTensorNetworks = "3075f829-f72e-4896-a859-7fe0a9cabb9b"
+T4ARegistrator = "52e3f0f8-52ab-4798-a033-7b9fb81451b4"
+TensorCrossInterpolation = "b261b2ec-6378-4871-b32e-9173bb050604"
+TreeTCI = "ac02bf95-72b1-4658-a692-4d4ff10c3b7f"

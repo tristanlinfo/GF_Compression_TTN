@@ -132,27 +132,4 @@ function seed_pivots!(tci)
     end
 end
 
-function sampled_errors(f, ttn, nsamples::Int, bits::Int)
-    """ Compute sampled errors between function f and ttn approximation over nsamples random inputs of length 2*bits."""
-    eval_ttn = if ttn isa TreeTCI.SimpleTCI
-        sitetensors = TreeTCI.fillsitetensors(ttn, f)
-        TreeTCI.TreeTensorNetwork(ttn.g, sitetensors)
-    else
-        ttn
-    end
-
-    error_inf = 0.0
-    error_l1 = 0.0
-    for _ in 1:nsamples
-        # Generate a random 3R sequence of 1s and 2s
-        x = rand(1:2, 2 * bits)
-        # Evaluate the concrete TreeTensorNetwork (it provides evaluate/call)
-        approx = TreeTCI.evaluate(eval_ttn, x)
-        err = abs(f(x) - approx)
-        error_inf = max(error_inf, err)
-        error_l1 += err
-    end
-    return error_inf, error_l1 / nsamples
-end
-
 end # module

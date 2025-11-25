@@ -16,25 +16,26 @@ Structure:
   y-chain: (R+1) — (R+2) — ... — (2R)
   Link: 1 — (R+1)
 """
-function CTTN(R::Int)
+function CTTN(R::Int, d::Int=2)
     @assert R ≥ 2 "R must be at least 2"
-    g = NamedGraph(2R)
+    @assert d ≥ 1 "dimension d must be at least 1"
+    N = d * R
+    g = NamedGraph(N)
 
-    # x chain
-    for i in 1:(R-1)
-        add_edge!(g, i, i + 1)
+    # build a linear chain for each dimension
+    for dim in 0:(d-1)
+        base = dim * R
+        for i in 1:(R-1)
+            add_edge!(g, base + i, base + i + 1)
+        end
     end
 
-    # x–y link
-    add_edge!(g, 1, R + 1)
-
-    # y chain
-    for i in (R+1):(2R-1)
-        add_edge!(g, i, i + 1)
+    # link the root of the first chain to the roots of the other chains
+    for dim in 1:(d-1)
+        add_edge!(g, 1, dim * R + 1)
     end
 
     return g
-
 end
 
 """
@@ -48,19 +49,26 @@ Structure:
     y-chain: 2 — 4 — 6 — ... — (2R)
     Link: 1 — 2
 """
-function CTTN_Alt(R::Int)
+function CTTN_Alt(R::Int, d::Int=2)
     @assert R ≥ 2 "R must be at least 2"
-    g = NamedGraph(2R)
-    # x-chain (odd vertices)
-    for i in 1:(R-1)
-        add_edge!(g, 2i - 1, 2i + 1)
+    @assert d ≥ 1 "dimension d must be at least 1"
+    N = d * R
+    g = NamedGraph(N)
+
+    # vertices for dimension `dim` are at positions (dim-1)*R + 1 .. dim*R
+    # connect within each dimension skipping according to interleaved layout
+    for dim in 1:d
+        for j in 1:(R-1)
+            v1 = (dim - 1) * R + j
+            v2 = (dim - 1) * R + j + 1
+            add_edge!(g, v1, v2)
+        end
     end
-    # y-chain (even vertices)
-    for i in 1:(R-1)
-        add_edge!(g, 2i, 2i + 2)
+
+    # Link the first roots together (star from first root)
+    for dim in 2:d
+        add_edge!(g, 1, (dim - 1) * R + 1)
     end
-    # x–y link
-    add_edge!(g, 1, 2)
     return g
 end
 
@@ -75,94 +83,30 @@ Structure:
   - y-representation: same structure shifted by R
   - Link between roots: 1 — (R+1)
 """
-function BTTN(R::Int)
+function BTTN(R::Int, d::Int=2)
     @assert R ≥ 2 "R must be at least 2"
-    g = NamedGraph(2R)
+    @assert d ≥ 1 "dimension d must be at least 1"
+    N = d * R
+    g = NamedGraph(N)
 
-    # ---- X binary tree ----
-    for i in 1:R
-        left = 2i
-        right = 2i + 1
-        if left ≤ R
-            add_edge!(g, i, left)
-        end
-        if right ≤ R
-            add_edge!(g, i, right)
-        end
-    end
-
-    # Link between x-root and y-root
-    add_edge!(g, 1, R + 1)
-
-    # ---- Y binary tree ----
-    for i in (R+1):(2R)
-        left = R + 2 * (i - R)
-        right = R + 2 * (i - R) + 1
-        if left ≤ 2R
-            add_edge!(g, i, left)
-        end
-        if right ≤ 2R
-            add_edge!(g, i, right)
+    # For each dimension build a binary tree on the block 1..R with offset
+    for dim in 0:(d-1)
+        base = dim * R
+        for i in 1:R
+            left = 2i
+            right = 2i + 1
+            if left ≤ R
+                add_edge!(g, base + i, base + left)
+            end
+            if right ≤ R
+                add_edge!(g, base + i, base + right)
+            end
         end
     end
 
-    return g
-end
-
-"""
-    BTTN_3D(R::Int)
-
-Generate a NamedGraph representing a quantics Binary TTN topology for 3D functions,
-with `R` bits precision per dimension (total 3R vertices).
-
-Structure:
-  - x-representation: binary tree on vertices 1..R
-  - y-representation: binary tree on vertices (R+1)..(2R)
-  - z-representation: binary tree on vertices (2R+1)..(3R)
-  - Links between roots: connect x-root (1) to y-root (R+1) and z-root (2R+1)
-"""
-function BTTN_3D(R::Int)
-    @assert R ≥ 2 "R must be at least 2"
-    g = NamedGraph(3R)
-
-    # ---- X binary tree ----
-    for i in 1:R
-        left = 2i
-        right = 2i + 1
-        if left ≤ R
-            add_edge!(g, i, left)
-        end
-        if right ≤ R
-            add_edge!(g, i, right)
-        end
-    end
-
-    # Links between roots: x-root connects to y-root and z-root
-    add_edge!(g, 1, R + 1)
-    add_edge!(g, 1, 2R + 1)
-
-    # ---- Y binary tree ----
-    for i in (R+1):(2R)
-        left = R + 2 * (i - R)
-        right = R + 2 * (i - R) + 1
-        if left ≤ 2R
-            add_edge!(g, i, left)
-        end
-        if right ≤ 2R
-            add_edge!(g, i, right)
-        end
-    end
-
-    # ---- Z binary tree ----
-    for i in (2R+1):(3R)
-        left = 2R + 2 * (i - 2R)
-        right = 2R + 2 * (i - 2R) + 1
-        if left ≤ 3R
-            add_edge!(g, i, left)
-        end
-        if right ≤ 3R
-            add_edge!(g, i, right)
-        end
+    # connect the roots of all dimensions to the first root (1)
+    for dim in 1:(d-1)
+        add_edge!(g, 1, dim * R + 1)
     end
 
     return g
@@ -180,39 +124,34 @@ Structure:
     - y-representation: binary tree on even vertices
     - Link between roots: 1 — 2
 """
-function BTTN_Alt(R::Int)
+function BTTN_Alt(R::Int, d::Int=2)
     @assert R ≥ 2 "R must be at least 2"
-    g = NamedGraph(2R)
-    # X binary tree (odd vertices: 1, 3, 5, ...)
-    for i in 1:R
-        parent = 2i - 1
-        left_idx = 2 * i
-        right_idx = 2 * i + 1
-        if left_idx <= R
-            left = 2 * left_idx - 1
-            add_edge!(g, parent, left)
-        end
-        if right_idx <= R
-            right = 2 * right_idx - 1
-            add_edge!(g, parent, right)
-        end
-    end
-    # Y binary tree (even vertices: 2, 4, 6, ...)
-    for i in 1:R
-        parent = 2i
-        left_idx = 2 * i
-        right_idx = 2 * i + 1
-        if left_idx <= R
-            left = 2 * left_idx
-            add_edge!(g, parent, left)
-        end
-        if right_idx <= R
-            right = 2 * right_idx
-            add_edge!(g, parent, right)
+    @assert d ≥ 1 "dimension d must be at least 1"
+    N = d * R
+    g = NamedGraph(N)
+
+    # For each dimension, treat positions (dim-1)*R + 1 .. dim*R as the binary tree nodes
+    for dim in 0:(d-1)
+        base = dim * R
+        for i in 1:R
+            parent = base + i
+            left_idx = 2 * i
+            right_idx = 2 * i + 1
+            if left_idx <= R
+                left = base + left_idx
+                add_edge!(g, parent, left)
+            end
+            if right_idx <= R
+                right = base + right_idx
+                add_edge!(g, parent, right)
+            end
         end
     end
-    # Link between x-root and y-root
-    add_edge!(g, 1, 2)
+
+    # Link roots together
+    for dim in 1:(d-1)
+        add_edge!(g, 1, dim * R + 1)
+    end
     return g
 end
 
@@ -223,10 +162,12 @@ Generate a NamedGraph representing a tensor train topology for 2D functions,
 with `R` bits precision per dimension (total 2R vertices).
 All x coordinates first, then all y coordinates: x₁ — x₂ — ... — x_R — y₁ — y₂ — ... — y_R
 """
-function QTT_Block(R::Int)
+function QTT_Block(R::Int, d::Int=2)
     @assert R ≥ 1 "R must be at least 1"
-    g = NamedGraph(2R)
-    for i in 1:(2R-1)
+    @assert d ≥ 1 "dimension d must be at least 1"
+    N = d * R
+    g = NamedGraph(N)
+    for i in 1:(N-1)
         add_edge!(g, i, i + 1)
     end
     return g
@@ -243,19 +184,20 @@ end
     Link: 2R-1 — 2
 """
 
-function QTT_Block_Alt(R::Int)
+function QTT_Block_Alt(R::Int, d::Int=2)
     @assert R ≥ 1 "R must be at least 1"
-    g = NamedGraph(2R)
-    # x-chain (odd vertices)
-    for i in 1:(R-1)
-        add_edge!(g, 2i - 1, 2i + 1)
+    @assert d ≥ 1 "dimension d must be at least 1"
+    N = d * R
+    g = NamedGraph(N)
+    # interleaved ordering: for j in 1:R, dims 1..d
+    seq = [(dim - 1) * R + j for j in 1:R for dim in 1:d]
+    for i in 1:(length(seq)-1)
+        add_edge!(g, seq[i], seq[i+1])
     end
-    # y-chain (even vertices)
-    for i in 1:(R-1)
-        add_edge!(g, 2i, 2i + 2)
+    # optionally add a cross-link similar to the 2D version
+    if d == 2 && R >= 2
+        add_edge!(g, 2R - 1, 2)
     end
-    # link between x and y chains
-    add_edge!(g, 2R - 1, 2)
     return g
 end
 
@@ -266,13 +208,19 @@ Generate a NamedGraph representing a tensor train topology for 2D functions,
 with `R` bits precision per dimension (total 2R vertices).
 Vertices alternate between x and y coordinates: x₁ — y₁ — x₂ — y₂ — ... — x_R — y_R
 """
-function QTT_Alt(R::Int)
+function QTT_Alt(R::Int, d::Int=2)
     @assert R ≥ 1 "R must be at least 1"
-    g = NamedGraph(2R)
-    for i in 1:R
-        add_edge!(g, i, R + i)
-        if i < R
-            add_edge!(g, R + i, i + 1)
+    @assert d ≥ 1 "dimension d must be at least 1"
+    N = d * R
+    g = NamedGraph(N)
+    # connect dims across each position j: dim1_j - dim2_j - ... - dimd_j
+    for j in 1:R
+        for dim in 1:(d-1)
+            add_edge!(g, (dim - 1) * R + j, dim * R + j)
+        end
+        # connect last dim at j to first dim at j+1 to create a chain along j
+        if j < R
+            add_edge!(g, (d - 1) * R + j, 1 + j)
         end
     end
     return g
@@ -288,10 +236,12 @@ Structure:
     x1-y1-x2-y2-...-xR-yR chain: 1 — 2 — 3 — 4 — ... — (2R-1) — (2R)
 """
 
-function QTT_Alt_Alt(R::Int)
+function QTT_Alt_Alt(R::Int, d::Int=2)
     @assert R ≥ 1 "R must be at least 1"
-    g = NamedGraph(2R)
-    for i in 1:(2R-1)
+    @assert d ≥ 1 "dimension d must be at least 1"
+    N = d * R
+    g = NamedGraph(N)
+    for i in 1:(N-1)
         add_edge!(g, i, i + 1)
     end
     return g

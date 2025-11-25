@@ -12,7 +12,7 @@ using Logging
 include(joinpath(@__DIR__, "..", "src", "tci_src.jl"))
 using .SampleTCI
 
-# Minimal runner that uses the convenience wrappers exported by SampleTCI.
+
 function main()
 
     mode = "gf" # or "pw"

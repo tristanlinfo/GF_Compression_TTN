@@ -25,43 +25,37 @@ function sampled_error(f, ttn, nsamples, bits, d)
     return error_l1 / nsamples
 end
 
-global k = randn(3, 30)
-global n = 30
+function sw(v)
+    #generate a function representing a 2D spherical wave centered at (0.5, 0.5) and plot it using Plots within the unit square [0, 1] x [0, 1]
+    x = bits2decimal(v[1:div(length(v), 2)])
+    y = bits2decimal(v[div(length(v), 2)+1:end])
+    return sin(20 * sqrt((x - 0.5)^2 + (y - 0.5)^2)) / (1 + 10 * sqrt((x - 0.5)^2 + (y - 0.5)^2))
 
-function pw(v)
-    """ Plane wave function in 3D with 30 different randomly (normal distribution) generated wavevectors k_j """
-    r = [bits2decimal(v[1:div(length(v), 3)]), bits2decimal(v[div(length(v), 3)+1:2*div(length(v), 3)]), bits2decimal(v[2*div(length(v), 3)+1:end])]
-    sum = 0.0
-    for i in 1:n
-        sum += cos(i * r' * k[:, i])
-    end
-    return sum
 end
 
-function plotpw()
-    f(x, y) = sum(cos(i * [x, y]' * randn(2)) for i in 1:n)
+function plotsw()
+    f(x, y) = sin(20 * sqrt((x - 0.5)^2 + (y - 0.5)^2)) / (1 + 10 * sqrt((x - 0.5)^2 + (y - 0.5)^2))
     xs = ys = range(0, 1, length=100)
     zs = [f(x, y) for x in xs, y in ys]
-    heatmap(xs, ys, zs, title="Plane Wave Amplitude", xlabel="x", ylabel="y", colorbar_title="f(x,y)")
-    savefig("SVG/PW/plane_wave_amplitude.svg")
+    heatmap(xs, ys, zs, title="Spherical Wave Function", xlabel="x", ylabel="y", colorbar_title="f(x,y)")
+    savefig("SVG/PW/spherical_wave_function.svg")
 end
 
 function main()
     # Parameters for TCI
     R = 16 # number of bits per dimension
-    d = 3 # spatial dimension
+    d = 2 # spatial dimension
     localdims = fill(2, d * R) # local dimensions for d dimensions with R bits each
 
     topo = Dict(
         "BTTN" => BTTN(R, d),
         "QTT_Seq" => QTT_Block(R, d),
         "QTT_Int" => QTT_Alt(R, d),
-        "CTTN" => CTTN(R, d),
-        "BTTN2" => BTTN2(R, d)
+        "CTTN" => CTTN(R, d)
     )
 
     ntopos = length(topo)
-    nsteps = 16
+    nsteps = 10
     step = 3
     maxit = 5
 
@@ -90,13 +84,13 @@ function main()
             for (j, (toponame, topology)) in enumerate(topo)
                 println("Topology: $toponame")
                 # Build Simple TCIs so each run starts from identical initial pivots
-                ttn = TreeTCI.SimpleTCI{Float64}(pw, localdims, topology)
+                ttn = TreeTCI.SimpleTCI{Float64}(sw2, localdims, topology)
                 #TreeTCI.addglobalpivots!(ttn,global_pivots)
                 # Optimize TCI
-                ranks, errors = TreeTCI.optimize!(ttn, pw; maxiter=maxit, maxbonddim=maxbd, sweepstrategy=TreeTCI.LocalAdjacentSweep2sitePathProposer())
+                ranks, errors = TreeTCI.optimize!(ttn, sw2; maxiter=maxit, maxbonddim=maxbd, sweepstrategy=TreeTCI.LocalAdjacentSweep2sitePathProposer())
 
                 # Compute sampled L1 error
-                errl1 = sampled_error(pw, ttn, 1000, R, d)
+                errl1 = sampled_error(sw2, ttn, 1000, R, d)
 
 
                 # Store results
@@ -115,6 +109,6 @@ function main()
     for j in 1:ntopos
         plot!(p1, step * collect(1:nsteps), error_l1[j, :], label=topo_names[j], marker=:o)
     end
-    savefig(p1, "pw_tci_sampled_l1_error.svg")
+    savefig(p1, "SVG/sw2_ttn.svg")
     display(p1)
 end
